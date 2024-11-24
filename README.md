@@ -11,8 +11,8 @@
 - `static/images/`：存放生成的图像的目录。
 
 ## 可视化
-项目利用matplot绘图提供以下可视化功能： 
-**（开发时注意展示图片,启动项目时会自动生成图片，资源在static/images/中，文件名为trade_days_price.png、week_price_change.png）**
+项目利用matplot绘图提供以下可视化功能：<br> 
+`（开发时注意展示图片,启动项目时会自动生成图片，资源在static/images/中，文件名为trade_days_price.png、week_price_change.png）`
 1. 交易天数与盘价： 显示前20名基金/股票在不同交易天数中的平均盘价。
 2. 近一周涨跌情况： 显示过去一周内前20名基金/股票的涨跌百分比和涨跌金额。
 
