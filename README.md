@@ -18,11 +18,11 @@
 
 ## 运行项目
 1. 确保已安装Python和所需的库：
-   **pip install flask matplotlib**
+   `pip install flask matplotlib`
 2. 运行Flask应用程序：
-   **python SparkFlask.py**
+   `python SparkFlask.py`
 4. 在浏览器中访问：
-   **http://127.0.0.1:5000**
+   `http://127.0.0.1:5000`
 ## 数据文件
 该项目使用多个JSON数据文件来存储和可视化投资数据。每个文件具有特定的格式和用途。
 
