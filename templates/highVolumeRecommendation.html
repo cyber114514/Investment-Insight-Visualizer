@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>高交易量基金/股票推荐</title>
+</head>
+<body>
+    <h1>高交易量基金/股票推荐</h1>
+    <p>以下列出了高交易量的前20名基金/股票，按交易次数从多到少排序。</p>
+    <pre id="data"></pre>
+    <script>
+        fetch('static/data/highVolumeRecommendation.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            });
+    </script>
+    <a href="/">返回导航</a>
+</body>
+</html>

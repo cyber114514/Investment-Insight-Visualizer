@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>基金/股票涨跌总金额</title>
+</head>
+<body>
+    <h1>基金/股票涨跌总金额</h1>
+    <p>以下是各基金/股票的总涨跌金额。</p>
+    <pre id="data"></pre>
+    <script>
+        fetch('static/data/fundStockPriceChange.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            });
+    </script>
+    <a href="/">返回导航</a>
+</body>
+</html>

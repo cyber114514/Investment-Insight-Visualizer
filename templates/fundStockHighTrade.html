@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>基金/股票交易次数大于500</title>
+</head>
+<body>
+    <h1>基金/股票交易次数大于500</h1>
+    <p>以下列出了交易次数超过500次的前20名基金/股票，按交易次数从多到少排序。</p>
+    <pre id="data"></pre>
+    <script>
+        fetch('static/data/fundStockHighTrade.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            });
+    </script>
+    <a href="/">返回导航</a>
+</body>
+</html>

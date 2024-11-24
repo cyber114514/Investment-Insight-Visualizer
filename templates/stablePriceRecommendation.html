@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>平均盘价稳定且上升趋势明显的基金/股票推荐</title>
+</head>
+<body>
+    <h1>平均盘价稳定且上升趋势明显的基金/股票推荐</h1>
+    <p>以下列出了平均盘价稳定且上升趋势明显的前20名基金/股票。</p>
+    <pre id="data"></pre>
+    <script>
+        fetch('static/data/stablePriceRecommendation.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            });
+    </script>
+    <a href="/">返回导航</a>
+</body>
+</html>

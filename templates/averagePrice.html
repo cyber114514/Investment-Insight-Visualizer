@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>基金/股票平均盘价</title>
+</head>
+<body>
+    <h1>基金/股票平均盘价</h1>
+    <p>以下是各基金/股票的平均盘价。</p>
+    <pre id="data"></pre>
+    <script>
+        fetch('static/data/averagePrice.json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            });
+    </script>
+    <a href="/">返回导航</a>
+</body>
+</html>
