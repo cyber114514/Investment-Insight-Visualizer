@@ -1,7 +1,7 @@
 # Investment-Insight-Visualizer
 
 ## 项目概述
-“Investment-Insight-Visualizer”旨在通过可视化投资数据，为交易模式、价格变动和基金/股票投资推荐提供洞察。该项目使用Python进行数据处理，利用Matplotlib进行数据可视化，并通过Flask框架来展示网页。
+“Investment-Insight-Visualizer”旨在通过可视化投资数据，为交易模式、价格变动和基金/股票投资推荐提供洞察。该项目主要用于展示利用分布式计算框架Hadoop分离聚合后的数据，利用Matplotlib进行数据可视化，并通过Flask框架来展示网页。
 
 ## 项目结构
 - `SparkFlask.py`：主Flask应用程序。
