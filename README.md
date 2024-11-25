@@ -7,6 +7,7 @@
 - `DataGenerator.py`：用于生成实验用数据集
 - `investment_data.csv`：实验用数据集
 - `SparkFlask.py`：主Flask应用程序。
+- `main.py`：主程序，存有mapreduce算法
 - `plot_data.py`：负责使用Matplotlib生成图表的脚本。
 - `templates/`：存放HTML模板的目录。
 - `static/data/`：存放JSON数据文件的目录。
