@@ -3,119 +3,96 @@ from pyspark.sql import SparkSession
 import json
 
 
-# 统计交易次数大于500的基金/股票名称，并按交易次数从多到少排序前20名
-def fundStockHighTrade(sc, spark, df):
-    j = df.groupBy('基金/股票名称').sum('七天内交易次数').withColumnRenamed('sum(七天内交易次数)', 'total_trades') \
-        .filter('total_trades > 500').orderBy('total_trades', ascending=False).take(20)
-    with open('static/data/fundStockHighTrade.json', 'w') as f:
-        f.write(json.dumps(j))
+def filter_high_trade_stocks(df):
+    return df.filter(df['成交量'] > 500).orderBy('成交量', ascending=False)
 
 
-# 统计各基金/股票的涨跌总金额
-def fundStockPriceChange(sc, spark, df):
-    j = df.select('基金/股票名称', '涨跌金额 (元)').rdd \
-        .map(lambda v: (v['基金/股票名称'], float(v['涨跌金额 (元)']))) \
-        .reduceByKey(lambda x, y: x + y).collect()
-    with open('static/data/fundStockPriceChange.json', 'w') as f:
-        f.write(json.dumps(j))
+def determine_risk_type(user_capital):
+    if user_capital < 10000:
+        return '极端保守型'
+    elif 10000 <= user_capital < 50000:
+        return '保守型'
+    elif 50000 <= user_capital < 200000:
+        return '稳健型'
+    elif 200000 <= user_capital < 500000:
+        return '平衡型'
+    elif 500000 <= user_capital < 1000000:
+        return '激进型'
+    else:
+        return '极端激进型'
 
 
-# 统计每只基金/股票的平均盘价，并返回键值对格式
-def averagePrice(sc, spark, df):
-    result = df.groupBy('基金/股票名称').avg('盘价 (元)').withColumnRenamed('avg(盘价 (元))', 'avg_price').orderBy(
-        'avg_price', ascending=False).collect()
-    ans = {v['基金/股票名称']: v['avg_price'] for v in result}
-    with open('static/data/averagePrice.json', 'w') as f:
-        f.write(json.dumps(ans, indent=2, ensure_ascii=False))
+def filter_by_risk(df, risk_type):
+    if risk_type == '极端保守型':
+        return df.filter((df['换手率'] < 5) & (df['市盈率'] < 15) & (df['成交量'] > 10000))
+    elif risk_type == '保守型':
+        return df.filter((df['振幅'] < 2) & (df['市盈率'] < 20) & (df['换手率'] > 3))
+    elif risk_type == '稳健型':
+        return df.filter((df['市盈率'] < 25) & (df['涨跌幅'] < 5) & (df['成交额'] > 500000))
+    elif risk_type == '平衡型':
+        return df.filter((df['市盈率'] < 30) & (df['振幅'] < 5) & (df['成交量'] > 50000))
+    elif risk_type == '激进型':
+        return df.filter((df['涨跌幅'] > 5) & (df['换手率'] > 10) & (df['市盈率'] < 40))
+    elif risk_type == '极端激进型':
+        return df.filter((df['涨跌幅'] > 10) & (df['振幅'] > 5) & (df['成交额'] > 1000000))
+    else:
+        return df
 
 
-# 取出总交易次数排名前20的基金/股票名称
-def topTradeList(sc, spark, df):
-    top_trade_list = df.groupBy('基金/股票名称').sum('七天内交易次数').withColumnRenamed('sum(七天内交易次数)',
-                                                                                         'total_trades') \
-        .orderBy('total_trades', ascending=False).rdd.map(lambda v: v[0]).take(20)
-    return top_trade_list
+def match_stocks_for_beginners(df, user_capital):
+    # 根据用户本金判断风险承受类型
+    risk_type = determine_risk_type(user_capital)
+
+    # 筛选符合基本条件的股票
+    df_filtered = df.filter(
+        (df['最低价'] < df['今开']) &
+        (df['最新价'] > df['今开']) &
+        (df['今开'] > df['昨开'])
+    )
+
+    # 根据风险承受类型进一步筛选股票
+    df_filtered = filter_by_risk(df_filtered, risk_type)
+
+    return df_filtered
 
 
-# 分析总交易次数前20的基金/股票的近一周涨跌情况
-def weekPriceChange(sc, spark, df, top_trade_list):
-    result = df.select('基金/股票名称', '涨跌百分比 (%)', '涨跌金额 (元)').rdd \
-        .filter(lambda v: v['基金/股票名称'] in top_trade_list) \
-        .map(lambda v: (v['基金/股票名称'], (float(v['涨跌百分比 (%)']), float(v['涨跌金额 (元)'])))) \
-        .reduceByKey(lambda x, y: (x[0] + y[0], x[1] + y[1])).collect()
+def analyze_stocks(df):
+    # 分析：计算总交易次数、价格变动等
+    result = df.groupBy('股票名称').agg(
+        {'成交量': 'sum', '涨跌额': 'sum', '最新价': 'avg'}
+    ).withColumnRenamed('sum(成交量)', 'total_trades') \
+        .withColumnRenamed('sum(涨跌额)', 'total_price_change') \
+        .withColumnRenamed('avg(最新价)', 'avg_price').collect()
 
-    result = list(map(lambda v: [v[0], v[1][0], v[1][1]], result))
-    ans = {}
-    for name in top_trade_list:
-        ans[name] = list(filter(lambda v: v[0] == name, result))
-    with open('static/data/weekPriceChange.json', 'w') as f:
-        f.write(json.dumps(ans))
+    # 将分析结果保存到JSON文件
+    with open('static/data/analysis_result.json', 'w') as f:
+        f.write(json.dumps(result, indent=2, ensure_ascii=False))
 
 
-# 高交易量基金/股票建议
-def highVolumeRecommendation(sc, spark, df):
-    result = df.groupBy('基金/股票名称').sum('七天内交易次数').withColumnRenamed('sum(七天内交易次数)', 'total_trades') \
-        .orderBy('total_trades', ascending=False).take(20)
-    with open('static/data/highVolumeRecommendation.json', 'w') as f:
-        f.write(json.dumps(result))
-
-
-# 平均盘价稳定且上升趋势明显的基金/股票建议
-def stablePriceRecommendation(sc, spark, df):
-    result = df.groupBy('基金/股票名称').avg('盘价 (元)').withColumnRenamed('avg(盘价 (元))', 'avg_price') \
-        .filter('avg_price > 100').orderBy('avg_price', ascending=False).take(20)
-    with open('static/data/stablePriceRecommendation.json', 'w') as f:
-        f.write(json.dumps(result))
-
-
-# 近一周内上涨趋势明显的基金/股票建议（基于整个数据集）
-def weeklyUpwardTrendRecommendation(sc, spark, df):
-    rdd = df.select('基金/股票名称', '涨跌百分比 (%)').rdd \
-        .filter(lambda v: float(v['涨跌百分比 (%)']) > 0) \
-        .map(lambda v: (v['基金/股票名称'], float(v['涨跌百分比 (%)']))) \
-        .reduceByKey(lambda x, y: x + y)
-
-    # 转换为DataFrame以进行排序
-    result = spark.createDataFrame(rdd, schema=['基金/股票名称', '总涨跌百分比'])
-    result = result.orderBy(result['总涨跌百分比'], ascending=False).take(20)
-
-    with open('static/data/weeklyUpwardTrendRecommendation.json', 'w') as f:
-        f.write(json.dumps([row.asDict() for row in result]))
-
-
-# 总交易次数前五的基金/股票在不同天数交易次数中的平均盘价
-def tradeDaysPrice(sc, spark, df, top_trade_list):
-    result = df.select('基金/股票名称', '七天内交易次数', '盘价 (元)').rdd \
-        .filter(lambda v: v['基金/股票名称'] in top_trade_list) \
-        .map(lambda v: (v['基金/股票名称'], (float(v['盘价 (元)']), 1))) \
-        .reduceByKey(lambda x, y: (x[0] + y[0], x[1] + y[1])) \
-        .map(lambda v: (v[0], v[1][0] / v[1][1])).collect()
-
-    with open('static/data/tradeDaysPrice.json', 'w') as f:
-        f.write(json.dumps(result))
-
-
-# 代码入口
 if __name__ == "__main__":
     sc = SparkContext('local', 'InvestmentAnalysis')
     sc.setLogLevel("WARN")
     spark = SparkSession.builder.appName("InvestmentAnalysis").getOrCreate()
-    file = "investment_data.csv"
-    df = spark.read.csv(file, header=True)  # dataframe
+    file = "cleaned_stock_data.csv"
+    df = spark.read.csv(file, header=True)
+
     # 将列转换为数值类型
-    df = df.withColumn("七天内交易次数", df["七天内交易次数"].cast("int"))
-    df = df.withColumn("盘价 (元)", df["盘价 (元)"].cast("float"))
-    df = df.withColumn("涨跌百分比 (%)", df["涨跌百分比 (%)"].cast("float"))
-    df = df.withColumn("涨跌金额 (元)", df["涨跌金额 (元)"].cast("float"))
+    df = df.withColumn("成交量", df["成交量"].cast("int"))
+    df = df.withColumn("换手率", df["换手率"].cast("float"))
+    df = df.withColumn("市盈率", df["市盈率"].cast("float"))
+    df = df.withColumn("振幅", df["振幅"].cast("float"))
+    df = df.withColumn("涨跌幅", df["涨跌幅"].cast("float"))
+    df = df.withColumn("成交额", df["成交额"].cast("float"))
+    df = df.withColumn("最新价", df["最新价"].cast("float"))
+    df = df.withColumn("涨跌额", df["涨跌额"].cast("float"))
+    df = df.withColumn("最低价", df["最低价"].cast("float"))
+    df = df.withColumn("今开", df["今开"].cast("float"))
+    df = df.withColumn("昨开", df["昨开"].cast("float"))
 
-    top_trade_list = topTradeList(sc, spark, df)
+    user_capital = 100000  # 示例用户本金
 
-    fundStockHighTrade(sc, spark, df)
-    fundStockPriceChange(sc, spark, df)
-    averagePrice(sc, spark, df)
-    weekPriceChange(sc, spark, df, top_trade_list)
-    tradeDaysPrice(sc, spark, df, top_trade_list)
+    high_trade_stocks = filter_high_trade_stocks(df)
+    matching_stocks = match_stocks_for_beginners(high_trade_stocks, user_capital)
 
-    highVolumeRecommendation(sc, spark, df)
-    stablePriceRecommendation(sc, spark, df)
-    weeklyUpwardTrendRecommendation(sc, spark, df)
+    # 对匹配的股票进行进一步分析
+    analyze_stocks(matching_stocks)
